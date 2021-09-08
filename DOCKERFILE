@@ -1,0 +1,8 @@
+FROM python:3
+WORKDIR /usr/src/app
+RUN mkdir CLEAN
+RUN mkdir EVALUATED
+ADD RAW /
+ADD desafio.py /
+RUN pip install -r requirements.txt
+CMD [ "python", "./desafio.py" ]
