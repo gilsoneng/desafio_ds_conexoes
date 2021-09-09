@@ -13,7 +13,7 @@ import tensorflow as tf
 import math
 from keras.models import Sequential
 from keras.layers import Dense
-from matplotlib import pyplot
+from matplotlib import pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import r2_score
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     
     model.fit(df_train[feature_columns], df_train[target_train])
     
-    filename = f"MODELS\\model_{v_modelo}_{test_type}.sav"
+    filename = f"MODELS\\model_{test_type}_{v_modelo}.sav"
     
     pickle.dump(model, open(filename, 'wb'))
     
@@ -280,20 +280,44 @@ if __name__ == "__main__":
     df_base_full.to_csv(f'EVALUATED\\base_final_{test_type}_{v_modelo}.csv',sep = ';', index = False)
     
     #-----------Random Forest-----------
+        
+    test_type = 'random_forest'
     
-    RF_model = RandomForestRegressor(n_estimators = 1000, random_state = 42)
+    RF_model = RandomForestRegressor(n_estimators = 20, random_state = 42, n_jobs=-1) # Multiprocessing param: n_jobs=-1
     
     RF_model.fit(df_train[feature_columns], df_train[target_train])
     
+    filename = f"MODELS\\model_{test_type}_{v_modelo}.sav"
+    
+    pickle.dump(RF_model, open(filename, 'wb'))
+    
     df_test['Y_Predict'] = RF_model.predict(df_test[feature_columns])
     
-    
-    # mse = mean_squared_error(df_test[target_train], df_test['Y_Predict'])
+    mse = mean_squared_error(df_test[target_train], df_test['Y_Predict'])
 
-    # r2_score = sklearn.metrics.r2_score(df_test[target_train], df_test['Y_Predict'])
+    r2_score = sklearn.metrics.r2_score(df_test[target_train], df_test['Y_Predict'])
     
-    # print(f'Test Type: {test_type}, Mean Square Error: {mse.round(2)}, R²: {r2_score.round(2)}')
+    print(f'Test Type: {test_type}, Mean Square Error: {mse.round(2)}, R²: {r2_score.round(2)}')
     
+    #-----------Shap Explainable-----------
+    
+    feature_importances = RF_model.feature_importances_
+    
+    rf_results = pd.DataFrame({'Feature':feature_columns, 'Feature importance':list(feature_importances)})
+    rf_results_sorted = rf_results.sort_values('Feature importance', ascending = False)
+    sns.barplot(y = 'Feature', x = 'Feature importance', data = rf_results_sorted.iloc[0:15,:])
+    plt.show()
+    
+    my_model_explainer = shap.TreeExplainer(RF_model)
+    X_sample = df_test[feature_columns][0:50]
+    shap_values = my_model_explainer.shap_values(X_sample)
+    
+    shap.summary_plot(shap_values, X_sample)
+    
+    shap.dependence_plot('grau_code',shap_values, X_sample)
+    
+    person = 0
+    shap_plot = shap.force_plot(my_model_explainer.expected_value, shap_values[person], features = X_sample.iloc[person], feature_names = feature_columns, matplotlib=True, plot_cmap=['#77dd77', '#f99191'])
     
     #-----------svm-----------
     
