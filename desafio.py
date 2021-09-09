@@ -24,6 +24,12 @@ from sklearn.svm import SVR
 from sklearn.linear_model import LinearRegression
 import pickle
 
+import seaborn as sns
+from sklearn.ensemble import RandomForestRegressor
+from sklearn import metrics
+from sklearn.inspection import permutation_importance
+import shap
+
 def inverse_dict(my_dict):
     """
     the func get a dictinary and reverse it, the keys become values and the values become keys.
@@ -117,11 +123,11 @@ def prepare_training_database():
     
     df_clean_train_conexoes_merged = df_clean_train_conexoes.merge(df_transform_individuos_transmissor, how = 'left', left_on = 'V1', right_on = 'name_transmissor')
     
-    df_clean_train_conexoes_merged = df_clean_train_conexoes_merged.merge(df_transform_individuos_receptor, how = 'left', left_on = 'V1', right_on = 'name_receptor')
+    df_clean_train_conexoes_merged = df_clean_train_conexoes_merged.merge(df_transform_individuos_receptor, how = 'left', left_on = 'V2', right_on = 'name_receptor')
     
     df_clean_previsao_conexoes_merged = df_clean_previsao_conexoes.merge(df_transform_individuos_transmissor, how = 'left', left_on = 'V1', right_on = 'name_transmissor')
     
-    df_clean_previsao_conexoes_merged = df_clean_previsao_conexoes_merged.merge(df_transform_individuos_receptor, how = 'left', left_on = 'V1', right_on = 'name_receptor')
+    df_clean_previsao_conexoes_merged = df_clean_previsao_conexoes_merged.merge(df_transform_individuos_receptor, how = 'left', left_on = 'V2', right_on = 'name_receptor')
     
     return df_clean_train_conexoes_merged, df_clean_previsao_conexoes_merged
 
@@ -214,9 +220,21 @@ if __name__ == "__main__":
     
     #predição do modelo
         
-    df_previsao['Y_Predict'] = model.predict(df_previsao[feature_columns]).astype(float)
-    
+    df_previsao['prob_V1_V2'] = model.predict(df_previsao[feature_columns]).astype(float)
+        
     df_previsao.to_csv(f'EVALUATED\\previsao_final_{test_type}_{v_modelo}.csv',sep = ';', index = False)
+    
+    df_previsao['fato'] = 'previsao'
+    
+    df_test['fato'] = 'teste'
+    
+    df_train['fato'] = 'train'
+    
+    df_test = df_test.drop(columns=['Y_Predict'], axis = 1)
+    
+    df_base_full = pd.concat([df_test, df_train, df_previsao])
+    
+    df_base_full.to_csv(f'EVALUATED\\base_full_{test_type}_{v_modelo}.csv',sep = ';', index = False)
     
     
     #-----------linear_regression-----------
@@ -248,6 +266,34 @@ if __name__ == "__main__":
     df_previsao['Y_Predict'] = model.predict(df_previsao[feature_columns]).astype(float)
     
     df_previsao.to_csv(f'EVALUATED\\previsao_final_{test_type}_{v_modelo}.csv',sep = ';', index = False)
+    
+    df_previsao['fato'] = 'previsao'
+    
+    df_test['fato'] = 'teste'
+    
+    df_train['fato'] = 'train'
+    
+    df_test = df_test.drop(columns=['Y_Predict'], axis = 1)
+    
+    df_base_full = pd.concat([df_test, df_train, df_previsao])
+    
+    df_base_full.to_csv(f'EVALUATED\\base_final_{test_type}_{v_modelo}.csv',sep = ';', index = False)
+    
+    #-----------Random Forest-----------
+    
+    RF_model = RandomForestRegressor(n_estimators = 1000, random_state = 42)
+    
+    RF_model.fit(df_train[feature_columns], df_train[target_train])
+    
+    df_test['Y_Predict'] = RF_model.predict(df_test[feature_columns])
+    
+    
+    # mse = mean_squared_error(df_test[target_train], df_test['Y_Predict'])
+
+    # r2_score = sklearn.metrics.r2_score(df_test[target_train], df_test['Y_Predict'])
+    
+    # print(f'Test Type: {test_type}, Mean Square Error: {mse.round(2)}, R²: {r2_score.round(2)}')
+    
     
     #-----------svm-----------
     
