@@ -5,3 +5,6 @@ keras
 matplotlib
 sklearn
 datetime
+pickle-mixin
+seaborn
+shap
